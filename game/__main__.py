@@ -66,11 +66,41 @@ class ScrollingBG:
             surface.blit(self.image, (x, self.y))
             x += self.image_width
 
+    # --- helper methods -------------------------------------------------
+    def world_to_screen(self, world_x: float, object_width: float = 0.0) -> float:
+        """
+        Convert a horizontal position anchored to this layer into screen space.
+
+        The optional ``object_width`` allows the caller to wrap the coordinate only
+        after the object has fully left the visible region. This prevents visual
+        "teleportation" when the texture width is smaller than the screen width.
+        """
+        if self.image_width == 0:
+            return -self.offset_x + world_x
+
+        screen_x = -self.offset_x + world_x
+        tile_width = self.image_width
+
+        if object_width <= 0:
+            while screen_x < 0:
+                screen_x += tile_width
+        else:
+            while screen_x + object_width <= 0:
+                screen_x += tile_width
+
+        while screen_x >= self.screen_width:
+            screen_x -= tile_width
+
+        return screen_x
+
+    @property
+    def base_y(self) -> int:
+        """Y position where this layer is drawn."""
+        return self.y
 
 
+class Game:
 
-class Game: 
-    
     def __init__(self):
         
 
@@ -101,11 +131,13 @@ class Game:
             ScrollingBG("assets/desert_dunefront.png", factor=1.30, screen_size=screen_size),
         ]
 
+        foremost_layer = bg_layers[-1]
 
-
-
-
-
+        self.foremost_layer = foremost_layer
+        self.box_width = 80
+        self.box_height = 80
+        self.box_world_x = foremost_layer.image_width * 0.25
+        self.box_screen_y = foremost_layer.base_y + foremost_layer.image_height - self.box_height - 40
 
         # Clock (for FPS control)
         clock = pg.time.Clock()
@@ -115,9 +147,6 @@ class Game:
         BLACK = (0, 0, 0)
         BLUE = (0, 0, 255)
         RED = (255, 0, 0)
-
-        
-
 
         screen_size = (1920, 1080)
         # bg = ScrollingBG("assets/background/mountain.png", speed=( +300, 0 ), screen_size=screen_size)
@@ -153,10 +182,12 @@ class Game:
             for bg in bg_layers:
                 bg.update(dt, BASE_V)
                 bg.draw(screen)
-                
-            
 
-        
+            box_screen_x = self.foremost_layer.world_to_screen(
+                self.box_world_x, self.box_width
+            )
+            box_rect = pg.Rect(int(box_screen_x), int(self.box_screen_y), self.box_width, self.box_height)
+            pg.draw.rect(screen, BLACK, box_rect)
 
             Player1.handle_keys()
             Player1.draw(screen)
