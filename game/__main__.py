@@ -122,7 +122,7 @@ class Game:
         self.box_width = 80
         self.box_height = 80
         self.box_world_x = foremost_layer.image_width * 0.25
-        self.box_screen_y = foremost_layer.base_y + foremost_layer.image_height - self.box_height - 40
+        self.box_screen_y = foremost_layer.base_y + foremost_layer.image_height - self.box_height - 100
 
         # Clock (for FPS control)
         clock = pg.time.Clock()
