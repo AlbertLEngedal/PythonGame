@@ -161,13 +161,12 @@ class Heli:
         if self.direction == "right":
             print(f"\nTarget tilt: " + str(self.target_tilt))
             print(f"True tilt: " + str(round(self.tilt, 2)))
-        # Approach target tilt smoothly and snap when within one step
-        delta = self.target_tilt - self.tilt
-        step = self.tilt_speed
-        if abs(delta) <= step:
-            self.tilt = self.target_tilt
-        else:
-            self.tilt += step if delta > 0 else -step
+        if not self.tilt == self.target_tilt:
+        
+            if not round(self.tilt, 2) >= self.target_tilt:
+                self.tilt += self.tilt_speed
+            elif round(self.tilt, 2) > self.target_tilt:
+                self.tilt -= self.tilt_speed
 
         if variation == "side":
             if blades == "revolve":
