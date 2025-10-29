@@ -172,7 +172,7 @@ class Game:
             box_rect = pg.Rect(int(box_screen_x), int(self.box_screen_y), self.box_width, self.box_height)
             pg.draw.rect(screen, BLACK, box_rect)
 
-            Player1.handle_keys()
+            Player1.handle_keys(dt)
             Player1.draw(screen)
 
             pg.display.flip()

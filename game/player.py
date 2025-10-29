@@ -73,7 +73,7 @@ class Jet:
 
         self.rect = self.active_image.get_rect(center=(self.x, self.y))
 
-    def handle_keys(self):
+    def handle_keys(self, dt=None):
         keys = pg.key.get_pressed()
 
         if self.afterburner_timer < 0:
@@ -126,9 +126,9 @@ class Heli:
         self.original_dimentions = 1414, 420
 
         # self.rect = self.image.get_rect(center=(x, y))
-        self.accelearation_backward = 7
-        self.accelearation_foreward = 7
-        self.speed_cap = 15
+        self.accelearation_backward = 420.0
+        self.accelearation_foreward = 420.0
+        self.speed_cap = 450.0
         # self.speed = self.idlespeed
         self.x = x
         self.y = y
@@ -142,9 +142,14 @@ class Heli:
         self.direction = "idle"
         self.hover_tilt = 3
         self.hover_tilt_speed = 0.1
-        self.hover_speed_eps = 0.01  # consider "stopped" when below this speed
+        self.hover_speed_eps = 5.0  # consider "stopped" when below this speed
         self.is_hovering = False
         self.bakgrunnsfart = 0
+
+        # Simple time-based physics parameters for braking/drag
+        self.brake_acceleration = 630.0
+        self.drag_coefficient = 2.0
+        self.vertical_speed_per_s = 420.0
 
         
         self.reach_stop = True
@@ -198,84 +203,66 @@ class Heli:
 
         self.rect = self.active_image.get_rect(center=(self.x, self.y))
 
-    def handle_keys(self):
+    def handle_keys(self, dt):
         keys = pg.key.get_pressed()
 
-
+        vertical_step = self.vertical_speed_per_s * dt
         if keys[pg.K_UP]:
-            self.y -= self.accelearation_foreward
+            self.y -= vertical_step
         elif keys[pg.K_DOWN]:
-            self.y += self.accelearation_foreward
-            
-            
-        if keys[pg.K_LEFT] or keys[pg.K_a]:
+            self.y += vertical_step
+
+        move_left = keys[pg.K_LEFT] or keys[pg.K_a]
+        move_right = keys[pg.K_RIGHT] or keys[pg.K_d]
+
+        horizontal_accel = 0.0
+
+        if move_left and not move_right:
             self.direction = "left"
-        elif keys[pg.K_RIGHT] or keys[pg.K_d]:
+            self.tilt_speed = 1
+            self.is_hovering = False
+            self.target_tilt = -15
+            if self.bakgrunnsfart > 0:
+                horizontal_accel = -self.brake_acceleration
+            else:
+                horizontal_accel = -self.accelearation_backward
+            self.afterburner_timer -= 5
+        elif move_right and not move_left:
             self.direction = "right"
+            self.tilt_speed = 1
+            self.is_hovering = False
+            self.target_tilt = 15
+            horizontal_accel = self.accelearation_foreward
+            self.afterburner_timer += 0.5
         else:
             self.direction = "idle"
-        
-
-        if self.direction == "left":
-            # self.just_reached_idle = True
-            self.tilt_speed = 1
-            self.is_hovering = False
-            
-            if self.bakgrunnsfart > 0:
-                self.bakgrunnsfart -= self.accelearation_backward * 1.5
-            else:
-                self.bakgrunnsfart -= self.accelearation_backward
-            
-            self.reach_stop = False
-            self.target_tilt = -15
-            
-            
-            
-            self.last_accs = -1
-
-            self.last_accs = self.accelearation
             self.afterburner_timer -= 5
-            
-            
-        elif self.direction == "right":
-            # self.just_reached_idle = True
-            self.tilt_speed = 1
-            self.is_hovering = False
-            self.reach_stop = False
-            self.target_tilt = 15
-            # if self.allow_movement:
-            #     self.x += self.speed
-            self.bakgrunnsfart += self.accelearation_foreward
 
-            
-            self.last_accs = self.accelearation
-        else: #idle
-            # self.reach_stop = True
-            
-            
-            if self.bakgrunnsfart != 0: #Runde av ?
+        self.bakgrunnsfart += horizontal_accel * dt
+
+        # Apply simple linear drag towards zero for more physical braking
+        if self.bakgrunnsfart != 0:
+            drag = self.bakgrunnsfart * self.drag_coefficient
+            self.bakgrunnsfart -= drag * dt
+
+        # Clamp to configured speed limits
+        self.bakgrunnsfart = max(-self.speed_cap, min(self.speed_cap, self.bakgrunnsfart))
+
+        if self.direction == "idle":
+            if abs(self.bakgrunnsfart) > self.hover_speed_eps:
                 self.tilt_speed = 0.7
                 self.target_tilt = 0
-                if self.bakgrunnsfart > 0:
-                    self.bakgrunnsfart -= self.accelearation_backward * 0.5
-                if self.bakgrunnsfart < 0:
-                    self.bakgrunnsfart += self.accelearation_foreward * 0.5
                 self.is_hovering = False
-            # gentle hover rocking only when effectively stopped
-            if abs(self.bakgrunnsfart) < self.hover_speed_eps:
-                # self.is_hovering = True
+            else:
+                self.bakgrunnsfart = 0
                 self.tilt_speed = self.hover_tilt_speed
                 if not self.is_hovering:
                     self.is_hovering = True
-                    self.target_tilt = self.hover_tilt * -1
-                else:
-                    if abs(round(self.tilt, 3)) >= abs(self.target_tilt):
-                        self.target_tilt = self.target_tilt * -1
-                        
-            
-            
-            # self.target_tilt = 0
-
+                    self.target_tilt = -self.hover_tilt
+                elif abs(round(self.tilt, 3)) >= abs(self.target_tilt):
+                    self.target_tilt *= -1
+        else:
+            self.is_hovering = False
 
         self.new_image("side", "revolve", self.tilt)
 
