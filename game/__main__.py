@@ -98,6 +98,11 @@ class ScrollingBG:
         """Y position where this layer is drawn."""
         return self.y
 
+        # Keep the coordinate tied to the same tiling cycle as the texture.
+        screen_x = (world_x - self.offset_x) % self.image_width
+        if screen_x > self.screen_width:
+            screen_x -= self.image_width
+        return screen_x
 
 class Game:
 
