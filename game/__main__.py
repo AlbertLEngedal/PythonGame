@@ -66,11 +66,26 @@ class ScrollingBG:
             surface.blit(self.image, (x, self.y))
             x += self.image_width
 
+    # --- helper methods -------------------------------------------------
+    def world_to_screen(self, world_x: float) -> float:
+        """Convert a horizontal position anchored to this layer into screen space."""
+        if self.image_width == 0:
+            return 0.0
+
+        # Keep the coordinate tied to the same tiling cycle as the texture.
+        screen_x = (world_x - self.offset_x) % self.image_width
+        if screen_x > self.screen_width:
+            screen_x -= self.image_width
+        return screen_x
+
+    @property
+    def base_y(self) -> int:
+        """Y position where this layer is drawn."""
+        return self.y
 
 
+class Game:
 
-class Game: 
-    
     def __init__(self):
         
 
@@ -101,11 +116,13 @@ class Game:
             ScrollingBG("assets/desert_dunefront.png", factor=1.30, screen_size=screen_size),
         ]
 
+        foremost_layer = bg_layers[-1]
 
-
-
-
-
+        self.foremost_layer = foremost_layer
+        self.box_width = 80
+        self.box_height = 80
+        self.box_world_x = foremost_layer.image_width * 0.25
+        self.box_screen_y = foremost_layer.base_y + foremost_layer.image_height - self.box_height - 40
 
         # Clock (for FPS control)
         clock = pg.time.Clock()
@@ -115,9 +132,6 @@ class Game:
         BLACK = (0, 0, 0)
         BLUE = (0, 0, 255)
         RED = (255, 0, 0)
-
-        
-
 
         screen_size = (1920, 1080)
         # bg = ScrollingBG("assets/background/mountain.png", speed=( +300, 0 ), screen_size=screen_size)
@@ -153,10 +167,10 @@ class Game:
             for bg in bg_layers:
                 bg.update(dt, BASE_V)
                 bg.draw(screen)
-                
-            
 
-        
+            box_screen_x = self.foremost_layer.world_to_screen(self.box_world_x)
+            box_rect = pg.Rect(int(box_screen_x), int(self.box_screen_y), self.box_width, self.box_height)
+            pg.draw.rect(screen, BLACK, box_rect)
 
             Player1.handle_keys()
             Player1.draw(screen)
